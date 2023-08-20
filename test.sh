@@ -23,5 +23,7 @@ assert 47 '5+6*7'
 assert 15 '5*(9-6)'
 assert 4 '(3+5)/2'
 assert 21 '-7*-3'
-
+assert 1 '5==(2+3)'
+assert 1 '9>=(2*3+2)'
+assert 1 '4!=3'
 echo OK
