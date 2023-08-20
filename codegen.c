@@ -1,6 +1,5 @@
 #include "9cc.h"
 
-struct Token *token;
 struct Node *new_Node(NodeKind kind, struct Node *lhs, struct Node *rhs)
 {
   struct Node *new = calloc(1, sizeof(struct Node));
@@ -18,9 +17,34 @@ struct Node *new_Node_num(int val)
   return new;
 }
 
+struct Node* code[100];
+
+void program(){
+    int i = 0;
+    while(!at_eof()){
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
+}
+
+struct Node *stmt(){
+    struct Node *cur;
+    cur = expr();
+    expect(";");
+    return cur;
+}
+
+struct Node *assign(){
+    struct Node *cur = equality();
+    if(consume("=")){
+        cur = new_Node(ND_ASSIGN, cur, assign());
+    }
+    return cur;
+}
+
 struct Node *expr()
 {
-  struct Node *cur = equality();
+  struct Node *cur = assign();
   return cur;
 }
 
@@ -121,6 +145,13 @@ struct Node *unary()
 
 struct Node *primary()
 {
+  struct Token *tok = consume_ident();
+  if(tok){
+    struct Node *cur = calloc(1, sizeof(struct Node));
+    cur->kind = ND_LVAR;
+    cur->lvar = find_lvar(tok->str);
+    return cur;
+  }
   if (consume("("))
   {
     struct Node *cur = expr();
@@ -130,12 +161,39 @@ struct Node *primary()
   return new_Node_num(expect_number());
 }
 
+void gen_lvar(struct Node *node){
+    if(node->kind != ND_LVAR) return;
+    printf("mov rax, rbp\n");
+    printf("sub rax, %d\n", node->lvar->offset);
+    printf("push rax\n");
+}
+
 void gen(struct Node *cur)
 {
   if (cur->kind == ND_NUM)
   {
     printf("push %d\n", cur->val);
     return;
+  }
+
+  switch(cur->kind){
+    case ND_NUM:
+        printf("push %d\n", cur->val);
+        return;
+    case ND_LVAR:
+        gen_lvar(cur);
+        printf("pop rax\n");
+        printf("mov rax, [rax]\n");
+        printf("push rax\n");
+        return;
+    case ND_ASSIGN:
+        gen_lvar(cur->lhs);
+        gen(cur->rhs);
+        printf("pop rdi\n");
+        printf("pop rax\n");
+        printf("mov [rax], rdi\n");
+        printf("push rdi\n");
+        return;
   }
   gen(cur->lhs);
   gen(cur->rhs);

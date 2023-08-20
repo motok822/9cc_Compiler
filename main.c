@@ -1,5 +1,9 @@
 #include "9cc.h"
 struct Token *token;
+struct Node *code[100];
+struct LVAR *locals;
+int k;
+
 int main(int argc, char **argv)
 {
   if (argc != 2)
@@ -11,9 +15,19 @@ int main(int argc, char **argv)
   printf(".globl main\n");
   printf("main:\n");
   token = tokenize(argv[1]);
-  struct Node *node = expr();
-  gen(node);
-  printf("pop rax\n");
+  program();
+  printf("push rbp\n");
+  printf("mov rbp, rsp\n");
+  printf("sub rsp, 208\n");
+  // 先頭の式から順にコード生成
+  for (int i = 0; code[i]; i++) {
+    gen(code[i]);
+    // 式の評価結果としてスタックに一つの値が残っている
+    // はずなので、スタックが溢れないようにポップしておく
+    printf("pop rax\n");
+  }
+  printf("mov rsp, rbp\n");
+  printf("pop rbp\n");
   printf("ret\n");
   return 0;
 }

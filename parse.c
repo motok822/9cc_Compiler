@@ -1,6 +1,7 @@
 #include "9cc.h"
 
 struct Token *token;
+struct LVAR *locals;
 
 void error(char *fmt, ...)
 {
@@ -16,6 +17,13 @@ bool at_eof()
   if (token->kind == TK_EOF)
     return true;
   return false;
+}
+
+struct Token* consume_ident(){
+    if(token->kind != TK_IDENT) return NULL;
+    struct Token* res = token;
+    token = token->next;
+    return res;
 }
 
 bool consume(char *op)
@@ -46,10 +54,39 @@ struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str)
 {
   struct Token *new = calloc(1, sizeof(struct Token));
   new->kind = tk;
+  new->str = calloc(1, sizeof(char)*20);
   new->str = str;
   cur->next = new;
   new->len = len;
   return new;
+}
+
+
+struct LVAR* find_lvar(char *str){
+    for(struct LVAR* i = locals;i; i= i->next){
+        if(memcmp(str, i->str, strlen(str)) == 0)return i;
+    }
+    return NULL;
+}
+
+void new_lvar(char *str){
+    struct LVAR* new = calloc(1, sizeof(struct LVAR));
+    new->str = str;
+    new->len = strlen(str);
+    if(!locals){
+        locals = new;
+        new->offset = 8;
+    }
+    else{
+        struct LVAR* c = locals;
+        int cnt = 2;
+        while(c->next){
+            c = c->next;
+            cnt++;
+        }
+        new->offset = cnt*8;
+        c->next = new;
+    }
 }
 
 struct Token *tokenize(char *p)
@@ -57,6 +94,7 @@ struct Token *tokenize(char *p)
   struct Token head;
   head.next = NULL;
   struct Token *cur = &head;
+  int name_cnt = 0;
   while (*p)
   {
     if (isspace(*p))
@@ -71,7 +109,23 @@ struct Token *tokenize(char *p)
       p += 2;
       continue;
     }
-    if (strchr("+-*/()<>", *p))
+    int cnt = 0;
+    static char name[20][20] = {'\n'};
+    while('a' <= *(p+cnt) && *(p+cnt) <= 'z'){
+        cnt++;
+    }
+    if(cnt != 0){
+        strncpy(name[name_cnt], p, cnt);
+        cur = new_token(TK_IDENT, cur, cnt, name[name_cnt]);
+        p+=cnt;
+        if(!find_lvar(name[name_cnt])){
+            new_lvar(name[name_cnt]);
+        }
+        name_cnt++;
+        continue;
+    }
+
+    if (strchr("+-*/()<>;=", *p))
     {
       cur = new_token(TK_RESERVED, cur, 1, p++);
       continue;
