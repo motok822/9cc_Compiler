@@ -28,9 +28,67 @@ void program(){
 }
 
 struct Node *stmt(){
+    consume("{");
+    if(consume("for")){
+        expect("(");
+        struct Node* for1 = expr();
+        expect(";");
+        struct Node* for2 = expr();
+        expect(";");
+        struct Node* for3 = expr();
+        expect(")");
+        struct Node* cur = stmt();
+        struct Node* res = calloc(1, sizeof(struct Node));
+        res -> kind = ND_FOR;
+        res -> lhs = for1;
+        res -> rhs = calloc(1, sizeof(struct Node));
+        res -> rhs -> lhs = for2;
+        res -> rhs -> rhs = calloc(1, sizeof(struct Node));
+        res -> rhs -> rhs -> lhs = for3;
+        res -> rhs -> rhs -> rhs = cur;
+        consume("}");
+        return res;
+    }
+    if(consume("while")){
+        expect("(");
+        struct Node *cur = expr();
+        expect(")");
+        struct Node *res = calloc(1, sizeof(struct Node));
+        res -> kind = ND_WHILE;
+        res -> lhs = cur;
+        res -> rhs = stmt();
+        consume("}");
+        return res;
+    }
+    if(consume("if")){
+        expect("(");
+        struct Node *cur = expr();
+        expect(")");
+        struct Node *res = calloc(1, sizeof(struct Node));
+        res -> kind = ND_IF;
+        res -> lhs = cur;
+        struct Node *run = calloc(1, sizeof(struct Node));
+        run -> kind = ND_ELSE;
+        run -> lhs = stmt();
+        if(consume("else")){
+            run -> rhs = stmt();
+        }
+        res -> rhs = run;
+        consume("}");
+        return res;
+    }
+    if(consume_return()){
+        struct Node *cur = calloc(1, sizeof(struct Node));
+        cur -> kind = ND_RETURN;
+        cur -> rhs = expr();
+        expect(";");
+        consume("}");
+        return cur;
+    }
     struct Node *cur;
     cur = expr();
     expect(";");
+    consume("}");
     return cur;
 }
 
@@ -43,7 +101,7 @@ struct Node *assign(){
 }
 
 struct Node *expr()
-{
+{   
   struct Node *cur = assign();
   return cur;
 }
@@ -170,12 +228,8 @@ void gen_lvar(struct Node *node){
 
 void gen(struct Node *cur)
 {
-  if (cur->kind == ND_NUM)
-  {
-    printf("push %d\n", cur->val);
-    return;
-  }
-
+  int jmp_cnt = 0;
+  if(!cur) return;
   switch(cur->kind){
     case ND_NUM:
         printf("push %d\n", cur->val);
@@ -194,6 +248,51 @@ void gen(struct Node *cur)
         printf("mov [rax], rdi\n");
         printf("push rdi\n");
         return;
+    case ND_RETURN:
+        gen(cur->rhs);
+        printf("pop rax\n");
+        printf("mov rsp, rbp\n");
+        printf("pop rbp\n");
+        printf("ret\n");
+        return;
+    case ND_IF:
+        gen(cur->lhs);
+        printf("pop rax\n");
+        printf("cmp rax, 0\n");
+        printf("je .Lelse%d\n", jmp_cnt);
+        gen(cur->rhs->lhs);
+        printf("jmp .Lend%d\n", jmp_cnt);
+        printf(".Lelse%d:\n", jmp_cnt);
+        if(cur->rhs->rhs){
+           gen(cur->rhs->rhs); 
+        }
+        printf(".Lend%d:\n", jmp_cnt);
+        jmp_cnt++;
+        return;
+    case ND_WHILE:
+        printf(".Lbegin%d:\n", jmp_cnt);
+        gen(cur->lhs);
+        printf("pop rax\n");
+        printf("cmp rax, 0\n");
+        printf("je .Lend%d\n", jmp_cnt);
+        gen(cur->rhs);
+        printf("jmp .Lbegin%d\n", jmp_cnt);
+        printf(".Lend%d:\n", jmp_cnt);
+        jmp_cnt++;
+        return;
+    case ND_FOR:
+        gen(cur->lhs);
+        printf(".Lbegin%d:\n", jmp_cnt);
+        gen(cur->rhs->lhs);
+        printf("pop rax\n");
+        printf("cmp rax, 0\n");
+        printf("je .Lend%d\n", jmp_cnt);
+        gen(cur->rhs->rhs->rhs);
+        gen(cur->rhs->rhs->lhs);
+        printf("jmp .Lbegin%d\n", jmp_cnt);
+        printf(".Lend%d:\n", jmp_cnt);
+        jmp_cnt ++;
+        return;
   }
   gen(cur->lhs);
   gen(cur->rhs);
@@ -211,28 +310,28 @@ void gen(struct Node *cur)
     printf("imul rax, rdi\n");
     break;
   case ND_DIV:
-    printf("  cqo\n");
-    printf("  idiv rdi\n");
+    printf("cqo\n");
+    printf("idiv rdi\n");
     break;
   case ND_EQ:
-    printf("  cmp rax, rdi\n");
-    printf("  sete al\n");
-    printf("  movzb rax, al\n");
+    printf("cmp rax, rdi\n");
+    printf("sete al\n");
+    printf("movzb rax, al\n");
     break;
   case ND_NE:
-    printf("  cmp rax, rdi\n");
-    printf("  setne al\n");
-    printf("  movzb rax, al\n");
+    printf("cmp rax, rdi\n");
+    printf("setne al\n");
+    printf("movzb rax, al\n");
     break;
   case ND_LT:
-    printf("  cmp rax, rdi\n");
-    printf("  setl al\n");
-    printf("  movzb rax, al\n");
+    printf("cmp rax, rdi\n");
+    printf("setl al\n");
+    printf("movzb rax, al\n");
     break;
   case ND_LE:
-    printf("  cmp rax, rdi\n");
-    printf("  setle al\n");
-    printf("  movzb rax, al\n");
+    printf("cmp rax, rdi\n");
+    printf("setle al\n");
+    printf("movzb rax, al\n");
     break;
   }
   printf("push rax\n");

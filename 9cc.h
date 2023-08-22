@@ -9,6 +9,7 @@
 typedef enum
 {
   TK_RESERVED,
+  TK_RETURN,
   TK_NUM,
   TK_IDENT,
   TK_EOF,
@@ -36,6 +37,11 @@ typedef enum
   ND_LT, // <
   ND_LE, // <=
   ND_LVAR,
+  ND_RETURN,
+  ND_IF,
+  ND_ELSE,
+  ND_WHILE,
+  ND_FOR,
   ND_NUM,
 } NodeKind;
 
@@ -58,6 +64,7 @@ struct LVAR{
 extern struct Token *token;
 extern struct Node* code[100];
 extern struct LVAR* locals;
+extern int var_cnt;
 struct Token *tokenize(char *p);
 struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str);
 void error(char *fmt, ...);
@@ -66,6 +73,7 @@ struct Token* consume_ident();
 void expect(char *op);
 int expect_number();
 bool at_eof();
+bool consume_return();
 struct LVAR* find_lvar(char *str);
 void new_lvar(char *str);
 struct Node *new_Node(NodeKind kind, struct Node *lhs, struct Node *rhs);

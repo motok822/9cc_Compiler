@@ -2,7 +2,7 @@
 struct Token *token;
 struct Node *code[100];
 struct LVAR *locals;
-int k;
+int var_cnt;
 
 int main(int argc, char **argv)
 {
@@ -18,7 +18,7 @@ int main(int argc, char **argv)
   program();
   printf("push rbp\n");
   printf("mov rbp, rsp\n");
-  printf("sub rsp, 208\n");
+  printf("sub rsp, %d\n", 8*var_cnt);
   // 先頭の式から順にコード生成
   for (int i = 0; code[i]; i++) {
     gen(code[i]);

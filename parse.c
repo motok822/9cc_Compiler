@@ -26,6 +26,12 @@ struct Token* consume_ident(){
     return res;
 }
 
+bool consume_return(){
+    if(token->kind != TK_RETURN) return false;
+    token = token -> next;
+    return true;
+}
+
 bool consume(char *op)
 {
   if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
@@ -94,7 +100,7 @@ struct Token *tokenize(char *p)
   struct Token head;
   head.next = NULL;
   struct Token *cur = &head;
-  int name_cnt = 0;
+  var_cnt = 0;
   while (*p)
   {
     if (isspace(*p))
@@ -109,23 +115,50 @@ struct Token *tokenize(char *p)
       p += 2;
       continue;
     }
+    if(strncmp(p, "return", 6) == 0){
+        cur = new_token(TK_RETURN, cur, 6, "return");
+        p += 6;
+        continue;
+    }
+    if(strncmp(p, "if", 2) == 0){
+        cur = new_token(TK_RESERVED, cur, 2, p);
+        p += 2;
+        continue;
+    }
+    if(strncmp(p, "else", 4) == 0){
+        cur = new_token(TK_RESERVED, cur, 4, p);
+        p += 4;
+        continue;
+    }
+    if(strncmp(p, "while", 5) == 0){
+        cur = new_token(TK_RESERVED, cur, 5, p);
+        p += 5;
+        continue;
+    }
+    if(strncmp(p, "for", 3) == 0){
+        cur = new_token(TK_RESERVED, cur, 3, p);
+        p += 3;
+        continue;
+    }
+
     int cnt = 0;
-    static char name[20][20] = {'\n'};
+    static char *name[20];
     while('a' <= *(p+cnt) && *(p+cnt) <= 'z'){
         cnt++;
     }
     if(cnt != 0){
-        strncpy(name[name_cnt], p, cnt);
-        cur = new_token(TK_IDENT, cur, cnt, name[name_cnt]);
+        name[var_cnt] = calloc(1, sizeof(char)*20);
+        strncpy(name[var_cnt], p, cnt);
+        cur = new_token(TK_IDENT, cur, cnt, name[var_cnt]);
         p+=cnt;
-        if(!find_lvar(name[name_cnt])){
-            new_lvar(name[name_cnt]);
+        if(!find_lvar(name[var_cnt])){
+            new_lvar(name[var_cnt]);
         }
-        name_cnt++;
+        var_cnt++;
         continue;
     }
 
-    if (strchr("+-*/()<>;=", *p))
+    if (strchr("+-*/()<>;={}", *p))
     {
       cur = new_token(TK_RESERVED, cur, 1, p++);
       continue;

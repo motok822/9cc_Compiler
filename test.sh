@@ -27,5 +27,24 @@ assert 1 '5==(2+3);'
 assert 1 '9>=(2*3+2);'
 assert 1 '4!=3;'
 assert 3 'a=3;'
-assert 24 'a=4;b=5;a*b+a;'
+assert 24 'apple=4;ball=5;apple*ball+apple;'
+assert 56 'a=56;return a;'
+assert 2 'if(2==2) a=2;'
+assert 5 'a = 4;
+if(a==3){
+ a=4;
+}else {
+  a=5;
+}
+'
+assert 3 '
+a = 0;
+while(a <= 2){
+  a = a + 1;
+}
+'
+assert 5 '
+for(i = 0;i <= 4;i = i+1){
+  i = i;
+}'
 echo OK
