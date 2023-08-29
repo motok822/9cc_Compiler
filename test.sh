@@ -37,14 +37,25 @@ if(a==3){
   a=5;
 }
 '
-assert 3 '
+assert 5 '
 a = 0;
-while(a <= 2){
+while(a <= 4){
+  a = a + 2;
+  a = a - 1;
   a = a + 1;
+  a = a - 1;
 }
 '
 assert 5 '
 for(i = 0;i <= 4;i = i+1){
-  i = i;
+  i = i + 1;
+  i = i - 1;
 }'
+assert 6 '
+{
+  x = 2;
+  y = 4;
+  return x + y;
+}'
+
 echo OK

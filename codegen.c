@@ -18,7 +18,6 @@ struct Node *new_Node_num(int val)
 }
 
 struct Node* code[100];
-
 void program(){
     int i = 0;
     while(!at_eof()){
@@ -27,8 +26,21 @@ void program(){
     code[i] = NULL;
 }
 
+struct Node* new_block(){
+  struct Node *res = calloc(1, sizeof(struct Node));
+  res -> blocks = calloc(1, sizeof(struct Node*)*8);
+  res -> block_len = 0;
+  res -> cap = 8;
+  res -> kind = ND_BLOCK;
+  return res;
+}
+
+
 struct Node *stmt(){
-    consume("{");
+    int block_flag = 0;
+    if(consume("{")){
+        block_flag = 1;
+    }
     if(consume("for")){
         expect("(");
         struct Node* for1 = expr();
@@ -46,7 +58,6 @@ struct Node *stmt(){
         res -> rhs -> rhs = calloc(1, sizeof(struct Node));
         res -> rhs -> rhs -> lhs = for3;
         res -> rhs -> rhs -> rhs = cur;
-        consume("}");
         return res;
     }
     if(consume("while")){
@@ -57,7 +68,6 @@ struct Node *stmt(){
         res -> kind = ND_WHILE;
         res -> lhs = cur;
         res -> rhs = stmt();
-        consume("}");
         return res;
     }
     if(consume("if")){
@@ -74,7 +84,6 @@ struct Node *stmt(){
             run -> rhs = stmt();
         }
         res -> rhs = run;
-        consume("}");
         return res;
     }
     if(consume_return()){
@@ -82,14 +91,34 @@ struct Node *stmt(){
         cur -> kind = ND_RETURN;
         cur -> rhs = expr();
         expect(";");
-        consume("}");
         return cur;
     }
     struct Node *cur;
     cur = expr();
     expect(";");
-    consume("}");
+    if(block_flag == 1 && !consume("}")){   //consumeの順番をいじって解決するエラーがでた。ちょっと他に構造を変えてもいい気がする
+      struct Node *res = new_block();
+      res->blocks[0] = cur;
+      res->block_len = 1;
+      while(!consume("}") && block_flag == 1){
+        if(res->cap > res->block_len){
+          cur = stmt();
+          res->blocks[res->block_len] = cur;  
+          res->block_len ++;
+        }else{
+          res->cap *= 2;
+          res->blocks = realloc(res->blocks,sizeof(struct Node*)*res->cap);
+        }
+      }
+      return res;
+    }
     return cur;
+}
+
+struct Node *expr()
+{   
+  struct Node *cur = assign();
+  return cur;
 }
 
 struct Node *assign(){
@@ -100,11 +129,6 @@ struct Node *assign(){
     return cur;
 }
 
-struct Node *expr()
-{   
-  struct Node *cur = assign();
-  return cur;
-}
 
 struct Node *equality()
 {
@@ -201,10 +225,48 @@ struct Node *unary()
   return primary();
 }
 
+void define_argument(struct Node *cur,struct Token *tok){
+  while(tok){
+    tok = consume_ident();
+    if(tok){
+      cur -> kind = ND_LVAR;
+      cur -> lvar = find_lvar(tok->str);
+      if(!consume(","))break;
+      cur -> lhs = calloc(1, sizeof(struct Node));
+      cur = cur -> lhs;
+    }
+  }
+}
+
 struct Node *primary()
 {
   struct Token *tok = consume_ident();
   if(tok){
+    if(find_func(tok->str)){//関数が定義済み(呼び出し)
+      struct Func* f = find_func(tok->str);
+      struct Node* res = calloc(1, sizeof(struct Node));
+      res -> rhs = f -> node_func -> rhs;
+      res -> lvar = f -> node_func -> lvar;
+      res -> kind = ND_FUNCCALL;
+      if(consume("(")){
+        expect(")");
+        return res;
+      }else{
+        error("関数の呼び出し方が違います");
+      }
+    }
+    if(consume("(")){
+        struct Node *res = calloc(1, sizeof(struct Node));
+        res -> lhs = calloc(1, sizeof(struct Node));
+        res -> kind = ND_FUNC;          //ND_FUNCの左側には引数の変数
+        res -> lvar = find_lvar(tok->str);
+        define_argument(res -> lhs, tok);  //関数の引数の処理
+        new_func(res, tok->str);
+        expect(")");
+        res -> rhs = stmt();
+        return res;
+    }
+    //ローカル変数
     struct Node *cur = calloc(1, sizeof(struct Node));
     cur->kind = ND_LVAR;
     cur->lvar = find_lvar(tok->str);
@@ -229,6 +291,7 @@ void gen_lvar(struct Node *node){
 void gen(struct Node *cur)
 {
   int jmp_cnt = 0;
+  int cnt = 0;
   if(!cur) return;
   switch(cur->kind){
     case ND_NUM:
@@ -293,6 +356,27 @@ void gen(struct Node *cur)
         printf(".Lend%d:\n", jmp_cnt);
         jmp_cnt ++;
         return;
+    case ND_BLOCK:
+        while(cur->blocks[cnt]){
+          gen(cur->blocks[cnt]);
+          cnt++;
+          if(!cur->blocks[cnt])break;
+          printf("pop rax\n");
+        }
+        return;
+    case ND_FUNC:
+        printf("%s:\n", cur->lvar->str);
+        printf("push rbp\n");
+        printf("mov rbp, rsp\n");
+        gen(cur->rhs);
+        printf("pop rax\n");
+        printf("mov rsp, rbp\n");
+        printf("pop rbp\n");
+        printf("ret\n");
+        return;
+    case ND_FUNCCALL:
+        printf("call %s\n", cur->lvar->str);
+        return;
   }
   gen(cur->lhs);
   gen(cur->rhs);
@@ -336,3 +420,8 @@ void gen(struct Node *cur)
   }
   printf("push rax\n");
 }
+
+/*
+blockの実装を配列にしてエラーをなくす
+関数の中身が1行の時にエラーが出る（恐らく上のblockのプログラムのどこかが悪さをしている）
+*/

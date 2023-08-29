@@ -12,6 +12,20 @@ void error(char *fmt, ...)
   exit(1);
 }
 
+// エラー箇所を報告する
+void error_at(char *loc, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  int pos = loc - user_input;
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
+  fprintf(stderr, "^ ");
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
 bool at_eof()
 {
   if (token->kind == TK_EOF)
@@ -49,8 +63,9 @@ void expect(char *op)
 
 int expect_number()
 {
-  if (token->kind != TK_NUM)
+  if (token->kind != TK_NUM){
     error("数ではありません");
+  }
   int val = token->val;
   token = token->next;
   return val;
@@ -61,7 +76,8 @@ struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str)
   struct Token *new = calloc(1, sizeof(struct Token));
   new->kind = tk;
   new->str = calloc(1, sizeof(char)*20);
-  new->str = str;
+  strncpy(new->str, str, len);
+  new->str[len] = '\0';
   cur->next = new;
   new->len = len;
   return new;
@@ -73,6 +89,13 @@ struct LVAR* find_lvar(char *str){
         if(memcmp(str, i->str, strlen(str)) == 0)return i;
     }
     return NULL;
+}
+
+struct Func* find_func(char *str){
+  for(struct Func* i = functions; i; i = i->next){
+    if(memcmp(str, i->str, strlen(str)) == 0)return i;
+  }
+  return NULL;
 }
 
 void new_lvar(char *str){
@@ -93,6 +116,25 @@ void new_lvar(char *str){
         new->offset = cnt*8;
         c->next = new;
     }
+}
+
+void new_func(struct Node *res, char *str){
+  struct Func *new = calloc(1, sizeof(struct Func));
+  new->node_func = res;
+  new->str = str;
+  if(!functions){
+    functions = new;
+  }else{
+    struct Func *c = functions;
+    while(c->next){
+      c = c->next;
+    }
+    c->next = new;
+  }
+}
+
+int is_alnum(char c){
+    return ('a'<=c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c || c <= '9') || (c == '_');
 }
 
 struct Token *tokenize(char *p)
@@ -116,7 +158,7 @@ struct Token *tokenize(char *p)
       continue;
     }
     if(strncmp(p, "return", 6) == 0){
-        cur = new_token(TK_RETURN, cur, 6, "return");
+        cur = new_token(TK_RETURN, cur, 6, p);
         p += 6;
         continue;
     }
@@ -148,17 +190,26 @@ struct Token *tokenize(char *p)
     }
     if(cnt != 0){
         name[var_cnt] = calloc(1, sizeof(char)*20);
-        strncpy(name[var_cnt], p, cnt);
+        int exist_var = 0;
+        for(int i = 0;i < var_cnt;i++){
+          if(strlen(name[i]) == cnt && strncmp(name[i], p, cnt) == 0)exist_var = i+1;
+        }
+        if(exist_var != 0){   //既に変数が存在している
+          cur = new_token(TK_IDENT, cur, cnt, name[exist_var-1]);
+          p+=cnt;
+          continue;
+        }
+        strncpy(name[var_cnt], p, cnt);//新規の変数
         cur = new_token(TK_IDENT, cur, cnt, name[var_cnt]);
         p+=cnt;
         if(!find_lvar(name[var_cnt])){
             new_lvar(name[var_cnt]);
+            var_cnt++;
         }
-        var_cnt++;
         continue;
     }
 
-    if (strchr("+-*/()<>;={}", *p))
+    if (strchr("+-*/()<>;={},", *p))
     {
       cur = new_token(TK_RESERVED, cur, 1, p++);
       continue;

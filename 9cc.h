@@ -42,6 +42,9 @@ typedef enum
   ND_ELSE,
   ND_WHILE,
   ND_FOR,
+  ND_BLOCK,
+  ND_FUNC,
+  ND_FUNCCALL,
   ND_NUM,
 } NodeKind;
 
@@ -52,6 +55,9 @@ struct Node
   struct Node *rhs;
   int val;
   struct LVAR *lvar;
+  struct Node **blocks;
+  int block_len;
+  int cap;
 };
 
 struct LVAR{
@@ -61,9 +67,17 @@ struct LVAR{
     int len;
 };
 
+struct Func{
+    char *str;
+    struct Node *node_func;
+    struct Func *next;
+};
+
 extern struct Token *token;
 extern struct Node* code[100];
 extern struct LVAR* locals;
+extern struct Func *functions;
+extern char *user_input;
 extern int var_cnt;
 struct Token *tokenize(char *p);
 struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str);
@@ -75,9 +89,14 @@ int expect_number();
 bool at_eof();
 bool consume_return();
 struct LVAR* find_lvar(char *str);
+struct Func* find_func(char *str);
 void new_lvar(char *str);
+void new_func(struct Node *res, char *str);
+void error_at(char *loc, char *fmt, ...);
+int is_alnum(char c);
 struct Node *new_Node(NodeKind kind, struct Node *lhs, struct Node *rhs);
 struct Node *new_Node_num(int val);
+struct Node *block(struct Node *cur);
 void program();
 struct Node *stmt();
 struct Node *assign();
