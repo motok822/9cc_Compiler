@@ -56,6 +56,7 @@ struct Node
   int val;
   struct LVAR *lvar;
   struct Node **blocks;
+  struct Func *func;
   int block_len;
   int cap;
 };

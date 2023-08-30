@@ -64,6 +64,7 @@ void expect(char *op)
 int expect_number()
 {
   if (token->kind != TK_NUM){
+    printf("%s\n", token->str);
     error("数ではありません");
   }
   int val = token->val;
