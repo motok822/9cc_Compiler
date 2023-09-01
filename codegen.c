@@ -235,22 +235,32 @@ struct Node *unary()
   return primary();
 }
 
-void define_argument(struct Node *cur, struct Token *tok)
+struct Func* define_argument(struct Node *cur, struct Token *tok)
 {
+  struct Func *new = calloc(1, sizeof(struct Func));
+  int cnt = 0;
+  new -> cap = 8;
+  new -> args_len = 0;
+  new -> args = calloc(1, sizeof(struct LVAR)*8);
+  new -> node_func = cur;
+  new -> str = tok -> str;
   while (tok)
   {
     tok = consume_ident();
     if (tok)
     {
-      cur->kind = ND_LVAR;
-      cur->lvar = find_lvar(tok->str);
-      if (!consume(","))
-        break;
-      cur->lhs = calloc(1, sizeof(struct Node));
-      cur = cur->lhs;
+      if(new->args_len >= new->cap){
+        new->cap *= 2;
+        new->args = realloc(new->args, sizeof(struct LVAR)*new->cap);
+      }
+      new->args[new->args_len] = find_lvar(tok->str);
+      new->args_len++;
+      if(!consume(",")) break;
     }
   }
+  return new;
 }
+
 
 struct Node *primary()
 {
@@ -267,6 +277,17 @@ struct Node *primary()
       res->kind = ND_FUNCCALL;
       if (consume("(")) 
       {
+        int cnt = 0;
+        while(consume_number()){
+          res -> func -> args[cnt] -> val = expect_number();
+          cnt ++;
+          if(!consume(","))break;
+        }
+        if(cnt != res->func->args_len){
+          printf("cnt: %d\n", cnt);
+          printf("args_len: %d\n", res->func->args_len);
+          error("引数の数が違います");
+        }
         expect(")");
         return res;
       }
@@ -281,8 +302,18 @@ struct Node *primary()
       res->lhs = calloc(1, sizeof(struct Node));
       res->kind = ND_FUNC; // ND_FUNCの左側には引数の変数
       res->lvar = find_lvar(tok->str);
-      define_argument(res->lhs, tok); // 関数の引数の処理
-      new_func(res, tok->str);
+      struct Func* new = define_argument(res->lhs, tok);// 関数の引数の処理
+      if(new->args_len > 6)error("サポートしてしていません");
+      res -> func = new;
+      if(!functions){   //functionsの列に追加
+        functions = new;
+      }else{
+        struct Func *c = functions;
+        while(c->next){
+          c = c->next;
+        }
+        c = new;
+      }
       expect(")");
       res->rhs = stmt();
       return res;
@@ -302,6 +333,7 @@ struct Node *primary()
   return new_Node_num(expect_number());
 }
 
+const char *arg_resister[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 void gen_lvar(struct Node *node)
 {
   if (node->kind != ND_LVAR)
@@ -309,6 +341,26 @@ void gen_lvar(struct Node *node)
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->lvar->offset);
   printf("  push rax\n");
+}
+
+void gen_lvar2(struct LVAR *l){
+  printf("  mov rax, rbp\n");
+  printf("  sub rax, %d\n", l->offset);
+  printf("  push rax\n");
+}
+
+void init_var(struct Node* cur){
+  for(int i = 0;i < cur->func->args_len;i++){
+    gen_lvar2(cur->func->args[i]);
+    printf("  pop rax\n");
+    printf("  mov [rax], %s\n", arg_resister[i]);
+  }
+}
+
+void init_arg_resister(struct Node* cur){
+  for(int i = 0;i < cur->func->args_len;i++){
+    printf("  mov %s, %d\n",arg_resister[i], cur->func->args[i]->val);
+  }
 }
 
 void gen(struct Node *cur)
@@ -397,6 +449,7 @@ void gen(struct Node *cur)
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", 8 * var_cnt);
+    init_var(cur);
     gen(cur->rhs);
     printf("  pop rax\n");
     printf("  mov rsp, rbp\n");
@@ -404,6 +457,7 @@ void gen(struct Node *cur)
     printf("  ret\n");
     return;
   case ND_FUNCCALL:
+    init_arg_resister(cur);
     printf("  call %s\n", cur->func->str);
     printf("  push rax\n");
     return;
@@ -450,8 +504,3 @@ void gen(struct Node *cur)
   }
   printf("  push rax\n");
 }
-
-/*
-blockの実装を配列にしてエラーをなくす
-関数の中身が1行の時にエラーが出る（恐らく上のblockのプログラムのどこかが悪さをしている）
-*/

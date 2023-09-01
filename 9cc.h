@@ -53,16 +53,17 @@ struct Node
   NodeKind kind;
   struct Node *lhs;
   struct Node *rhs;
-  int val;
   struct LVAR *lvar;
   struct Node **blocks;
   struct Func *func;
+  int val;
   int block_len;
   int cap;
 };
 
 struct LVAR{
     struct LVAR* next;
+    int val;
     int offset;
     char *str;
     int len;
@@ -70,7 +71,10 @@ struct LVAR{
 
 struct Func{
     char *str;
+    int cap;
+    int args_len;
     struct Node *node_func;
+    struct LVAR **args;
     struct Func *next;
 };
 
@@ -85,6 +89,7 @@ struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str);
 void error(char *fmt, ...);
 bool consume(char *op);
 struct Token* consume_ident();
+bool consume_number();
 void expect(char *op);
 int expect_number();
 bool at_eof();

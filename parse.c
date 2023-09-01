@@ -46,6 +46,11 @@ bool consume_return(){
     return true;
 }
 
+bool consume_number(){  //こいつは例外的にtokenを進めないので注意
+  if(token->kind != TK_NUM) return false;
+  return true;
+}
+
 bool consume(char *op)
 {
   if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
@@ -56,8 +61,11 @@ bool consume(char *op)
 
 void expect(char *op)
 {
-  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
+  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len)){
+    printf("次のtokenは%sです\n", token->next->str);
     error("'%s'ではありません", op);
+
+  }
   token = token->next;
 }
 
@@ -119,7 +127,7 @@ void new_lvar(char *str){
     }
 }
 
-void new_func(struct Node *res, char *str){
+void new_func(struct Node *res, char *str){  //functionsの列に追加
   struct Func *new = calloc(1, sizeof(struct Func));
   new->node_func = res;
   new->str = str;
@@ -135,7 +143,7 @@ void new_func(struct Node *res, char *str){
 }
 
 int is_alnum(char c){
-    return ('a'<=c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c || c <= '9') || (c == '_');
+    return ('a'<=c && c <= 'z') || ('A'<=c && c <= 'Z') || c == '_' || ('0' <= c && c <= '9');
 }
 
 struct Token *tokenize(char *p)
@@ -183,10 +191,23 @@ struct Token *tokenize(char *p)
         p += 3;
         continue;
     }
+    if (strchr("+-*/()<>;={},", *p))
+    {
+      cur = new_token(TK_RESERVED, cur, 1, p++);
+      continue;
+    }
+    if (isdigit(*p))
+    {
+      cur = new_token(TK_NUM, cur, 0, p);
+      char *q = p;
+      cur->val = strtol(p, &p, 10);
+      cur->len = p - q;
+      continue;
+    }
 
     int cnt = 0;
     static char *name[20];
-    while('a' <= *(p+cnt) && *(p+cnt) <= 'z'){
+    while(is_alnum(*(p+cnt))){
         cnt++;
     }
     if(cnt != 0){
@@ -210,19 +231,6 @@ struct Token *tokenize(char *p)
         continue;
     }
 
-    if (strchr("+-*/()<>;={},", *p))
-    {
-      cur = new_token(TK_RESERVED, cur, 1, p++);
-      continue;
-    }
-    if (isdigit(*p))
-    {
-      cur = new_token(TK_NUM, cur, 0, p);
-      char *q = p;
-      cur->val = strtol(p, &p, 10);
-      cur->len = p - q;
-      continue;
-    }
     error("トークナイズできません");
   }
   cur = new_token(TK_EOF, cur, 0, p);

@@ -67,7 +67,6 @@ main(){
 }'
 
 assert 11 '
-
 add(){
   return 2+9;
 }
@@ -76,4 +75,28 @@ main(){
   add();
 }
 '
+
+assert 12 '
+add(x, y){
+  if(x <= y){
+    return x+y;
+  }else{
+    return x*y;
+  }
+}
+main(){
+  add(2, 10);
+}'
+
+# assert 3 '
+# fib(i){
+#   if(i<=1){
+#     return i;
+#   }
+#   return fib(i-1) + fib(i-2);
+# }
+# main(){
+#   fib(5);
+# }
+# '
 echo OK
