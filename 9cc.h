@@ -55,6 +55,7 @@ struct Node
   struct Node *rhs;
   struct LVAR *lvar;
   struct Node **blocks;
+  struct Node **args_node;
   struct Func *func;
   int val;
   int block_len;
@@ -88,6 +89,7 @@ struct Token *tokenize(char *p);
 struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str);
 void error(char *fmt, ...);
 bool consume(char *op);
+bool check(char *op);
 struct Token* consume_ident();
 bool consume_number();
 void expect(char *op);

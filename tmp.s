@@ -1,31 +1,21 @@
 .intel_syntax noprefix
 .globl main
-add:
+fib:
   push rbp
   mov rbp, rsp
-  sub rsp, 32
+  sub rsp, 24
   mov rax, rbp
   sub rax, 16
   push rax
   pop rax
   mov [rax], rdi
   mov rax, rbp
-  sub rax, 24
-  push rax
-  pop rax
-  mov [rax], rsi
-  mov rax, rbp
   sub rax, 16
   push rax
   pop rax
   mov rax, [rax]
   push rax
-  mov rax, rbp
-  sub rax, 24
-  push rax
-  pop rax
-  mov rax, [rax]
-  push rax
+  push 1
   pop rdi
   pop rax
   cmp rax, rdi
@@ -41,11 +31,43 @@ add:
   pop rax
   mov rax, [rax]
   push rax
+  pop rax
+  mov rsp, rbp
+  pop rbp
+  ret
+  jmp .Lend0
+  .Lelse0:
+  .Lend0:
+  pop rax
   mov rax, rbp
-  sub rax, 24
+  sub rax, 16
   push rax
   pop rax
   mov rax, [rax]
+  push rax
+  push 1
+  pop rdi
+  pop rax
+  sub rax, rdi
+  push rax
+  pop rax
+  mov rdi, rax
+  call fib
+  push rax
+  mov rax, rbp
+  sub rax, 16
+  push rax
+  pop rax
+  mov rax, [rax]
+  push rax
+  push 2
+  pop rdi
+  pop rax
+  sub rax, rdi
+  push rax
+  pop rax
+  mov rdi, rax
+  call fib
   push rax
   pop rdi
   pop rax
@@ -55,29 +77,6 @@ add:
   mov rsp, rbp
   pop rbp
   ret
-  jmp .Lend0
-  .Lelse0:
-  mov rax, rbp
-  sub rax, 16
-  push rax
-  pop rax
-  mov rax, [rax]
-  push rax
-  mov rax, rbp
-  sub rax, 24
-  push rax
-  pop rax
-  mov rax, [rax]
-  push rax
-  pop rdi
-  pop rax
-  imul rax, rdi
-  push rax
-  pop rax
-  mov rsp, rbp
-  pop rbp
-  ret
-  .Lend0:
   pop rax
   mov rsp, rbp
   pop rbp
@@ -85,10 +84,11 @@ add:
 main:
   push rbp
   mov rbp, rsp
-  sub rsp, 32
-  mov rdi, 2
-  mov rsi, 10
-  call add
+  sub rsp, 24
+  push 6
+  pop rax
+  mov rdi, rax
+  call fib
   push rax
   pop rax
   mov rsp, rbp

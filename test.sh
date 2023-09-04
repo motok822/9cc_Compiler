@@ -88,15 +88,15 @@ main(){
   add(2, 10);
 }'
 
-# assert 3 '
-# fib(i){
-#   if(i<=1){
-#     return i;
-#   }
-#   return fib(i-1) + fib(i-2);
-# }
-# main(){
-#   fib(5);
-# }
-# '
+assert 8 '
+fib(i){
+  if(i<=1){
+    return i;
+  }
+  return fib(i-1) + fib(i-2);
+}
+main(){
+  fib(6);
+}
+'
 echo OK

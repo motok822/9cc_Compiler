@@ -275,14 +275,20 @@ struct Node *primary()
       res->func = f;
       res->lvar = f->node_func->lvar;
       res->kind = ND_FUNCCALL;
+      res->args_node = calloc(1, sizeof(struct Node)*res->func->args_len);
       if (consume("(")) 
       {
         int cnt = 0;
-        while(consume_number()){
-          res -> func -> args[cnt] -> val = expect_number();
-          cnt ++;
-          if(!consume(","))break;
-        }
+        do{
+          if(check(")"))break;
+          res -> args_node[cnt] = expr();
+          cnt++;
+        }while(consume(","));
+        // while(consume_number()){  //引数に変数が来た場合に対応できていない
+        //   res -> func -> args[cnt] -> val = expect_number();
+        //   cnt ++;
+        //   if(!consume(","))break;
+        // }
         if(cnt != res->func->args_len){
           printf("cnt: %d\n", cnt);
           printf("args_len: %d\n", res->func->args_len);
@@ -359,7 +365,9 @@ void init_var(struct Node* cur){
 
 void init_arg_resister(struct Node* cur){
   for(int i = 0;i < cur->func->args_len;i++){
-    printf("  mov %s, %d\n",arg_resister[i], cur->func->args[i]->val);
+    gen(cur->args_node[i]);
+    printf("  pop rax\n");
+    printf("  mov %s, rax\n",arg_resister[i]);
   }
 }
 
@@ -445,7 +453,7 @@ void gen(struct Node *cur)
     }
     return;
   case ND_FUNC:
-    printf("%s:\n", cur->lvar->str);
+    printf("%s:\n", cur->func->str);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", 8 * var_cnt);
