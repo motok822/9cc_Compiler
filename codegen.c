@@ -232,6 +232,12 @@ struct Node *unary()
   {
     return new_Node(ND_SUB, new_Node_num(0), primary());
   }
+  if(consume("*")){
+    return new_Node(ND_DEREF, new_Node_num(0), primary());
+  }
+  if(consume("&")){
+    return new_Node(ND_ADDR, new_Node_num(0), primary());
+  }
   return primary();
 }
 
@@ -244,8 +250,10 @@ struct Func* define_argument(struct Node *cur, struct Token *tok)
   new -> args = calloc(1, sizeof(struct LVAR)*8);
   new -> node_func = cur;
   new -> str = tok -> str;
+  if(check(")"))return new;
   while (tok)
-  {
+  { 
+    if(!consume("int"))error("引数の型がありません");
     tok = consume_ident();
     if (tok)
     {
@@ -253,6 +261,7 @@ struct Func* define_argument(struct Node *cur, struct Token *tok)
         new->cap *= 2;
         new->args = realloc(new->args, sizeof(struct LVAR)*new->cap);
       }
+      new_lvar(tok->str);
       new->args[new->args_len] = find_lvar(tok->str);
       new->args_len++;
       if(!consume(",")) break;
@@ -264,6 +273,11 @@ struct Func* define_argument(struct Node *cur, struct Token *tok)
 
 struct Node *primary()
 {
+  
+  int first_def = 0;
+  if(consume("int")){
+    first_def = 1;
+  }
   struct Token *tok = consume_ident();
   if (tok)
   {
@@ -284,11 +298,6 @@ struct Node *primary()
           res -> args_node[cnt] = expr();
           cnt++;
         }while(consume(","));
-        // while(consume_number()){  //引数に変数が来た場合に対応できていない
-        //   res -> func -> args[cnt] -> val = expect_number();
-        //   cnt ++;
-        //   if(!consume(","))break;
-        // }
         if(cnt != res->func->args_len){
           printf("cnt: %d\n", cnt);
           printf("args_len: %d\n", res->func->args_len);
@@ -304,10 +313,11 @@ struct Node *primary()
     }
     if (consume("("))
     {
+      if(first_def != 1)error("関数の宣言方法が違います");
       struct Node *res = calloc(1, sizeof(struct Node));
       res->lhs = calloc(1, sizeof(struct Node));
       res->kind = ND_FUNC; // ND_FUNCの左側には引数の変数
-      res->lvar = find_lvar(tok->str);
+      // res->lvar = find_lvar(tok->str);
       struct Func* new = define_argument(res->lhs, tok);// 関数の引数の処理
       if(new->args_len > 6)error("サポートしてしていません");
       res -> func = new;
@@ -327,6 +337,12 @@ struct Node *primary()
     // ローカル変数
     struct Node *cur = calloc(1, sizeof(struct Node));
     cur->kind = ND_LVAR;
+    if(!find_lvar(tok->str) && first_def == 0)error("変数の定義の仕方が違います");
+    if(find_lvar(tok->str)){
+      cur->lvar = find_lvar(tok->str);
+      return cur;
+    }
+    new_lvar(tok->str);
     cur->lvar = find_lvar(tok->str);
     return cur;
   }
@@ -467,6 +483,15 @@ void gen(struct Node *cur)
   case ND_FUNCCALL:
     init_arg_resister(cur);
     printf("  call %s\n", cur->func->str);
+    printf("  push rax\n");
+    return;
+  case ND_ADDR:
+    gen_lvar(cur->rhs);
+    return;
+  case ND_DEREF:
+    gen(cur->rhs);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
   }

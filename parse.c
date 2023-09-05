@@ -69,6 +69,7 @@ void expect(char *op)
 {
   if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len)){
     printf("次のtokenは%sです\n", token->next->str);
+    printf("%s\n", user_input);
     error("'%s'ではありません", op);
 
   }
@@ -197,7 +198,12 @@ struct Token *tokenize(char *p)
         p += 3;
         continue;
     }
-    if (strchr("+-*/()<>;={},", *p))
+    if(strncmp(p, "int", 3) == 0){
+      cur = new_token(TK_RESERVED, cur, 3, p);
+      p += 3;
+      continue;
+    }
+    if (strchr("+-*/()<>;={},&", *p))
     {
       cur = new_token(TK_RESERVED, cur, 1, p++);
       continue;
@@ -230,10 +236,11 @@ struct Token *tokenize(char *p)
         strncpy(name[var_cnt], p, cnt);//新規の変数
         cur = new_token(TK_IDENT, cur, cnt, name[var_cnt]);
         p+=cnt;
-        if(!find_lvar(name[var_cnt])){
-            new_lvar(name[var_cnt]);
-            var_cnt++;
-        }
+        var_cnt++;
+        // if(!find_lvar(name[var_cnt])){ lvarへの追加は取り合えずここではしない
+        //     new_lvar(name[var_cnt]);
+        //     var_cnt++;
+        // }
         continue;
     }
 
