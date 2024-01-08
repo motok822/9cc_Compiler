@@ -1,5 +1,5 @@
 # 9ccコンパイラー
-このコンパイラはhttps://www.sigbus.info/compilerbookを参考に作った自作のコンパイラです。
+このコンパイラはhttps://www.sigbus.info/compilerbook を参考に作った自作のコンパイラです。
 実装されている機能は以下の通り
 - 四則演算
 - ローカル変数(intのみ)
