@@ -17,7 +17,6 @@ struct Node *new_Node_num(int val)
   return new;
 }
 
-struct Node *code[100];
 void program()
 {
   int i = 0;

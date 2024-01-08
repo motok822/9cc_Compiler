@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-
 typedef enum
 {
   TK_RESERVED,
@@ -87,6 +86,7 @@ extern struct LVAR* locals;
 extern struct Func *functions;
 extern char *user_input;
 extern int var_cnt;
+
 struct Token *tokenize(char *p);
 struct Token *new_token(TokenKind tk, struct Token *cur, int len, char *str);
 void error(char *fmt, ...);

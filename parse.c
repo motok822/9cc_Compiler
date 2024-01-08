@@ -1,8 +1,5 @@
 #include "9cc.h"
 
-struct Token *token;
-struct LVAR *locals;
-
 void error(char *fmt, ...)
 {
   va_list ap;
